@@ -24,6 +24,15 @@ body {
 	color: #fff;
 }
 
+.project_stub:hover {
+	background: #88f;
+}
+
+.project_stub.selected {
+	background: #f80;
+	color: #000;
+}
+
 .main {
 	background: #111;
 	color: #fff;
@@ -34,6 +43,14 @@ body {
 <script>
 "use strict";
 
+async function click_stub(e) {
+	const name = e.target.dataset.name;
+	const response = await fetch(`api/projects/${name}`);
+	const project = await response.json();
+	document.getElementById('main').textContent = project.name;
+	e.target.classList.add('selected');
+}
+
 async function load() {
 	const response = await fetch('api/projects');
 	const json = await response.json();
@@ -43,6 +60,8 @@ async function load() {
 		const div = document.createElement('div');
 		div.classList = ['project_stub'];
 		div.textContent = project.name;
+		div.onclick = click_stub;
+		div.dataset.name = project.name;
 		left.appendChild(div);
 	}
 }
@@ -53,9 +72,8 @@ window.onload = load;
 <body>
 	<div class="wrapper">
 		<div class="left" id="left">
-			Stuff
 		</div>
-		<div class="main">
+		<div class="main" id="main">
 		</div>
 	</div>
 </body>
