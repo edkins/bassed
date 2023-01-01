@@ -46,9 +46,20 @@ body {
 async function click_stub(e) {
 	const name = e.target.dataset.name;
 	const response = await fetch(`api/projects/${name}`);
-	const project = await response.json();
-	document.getElementById('main').textContent = project.name;
-	e.target.classList.add('selected');
+	if (response.status === 200) {
+		const project = await response.json();
+		const response2 = await fetch(`api/projects/${name}/spectrogram/0`);
+		if (response2.status === 200) {
+			const array_buffer = await response2.arrayBuffer();
+			const w = project.spectrogram.width;
+			const h = project.spectrogram.height;
+			const u8_array = new Uint8ClampedArray(array_buffer, 0, 4 * w * h);
+			const image_data = new ImageData(u8_array, w, h);
+			const ctx = document.getElementById('canvas').getContext('2d');
+			ctx.putImageData(image_data, 0, 0);
+			e.target.classList.add('selected');
+		}
+	}
 }
 
 async function load() {
@@ -74,6 +85,7 @@ window.onload = load;
 		<div class="left" id="left">
 		</div>
 		<div class="main" id="main">
+			<canvas width="1025" height="1024" id="canvas">
 		</div>
 	</div>
 </body>
