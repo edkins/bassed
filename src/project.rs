@@ -35,6 +35,7 @@ pub fn list() -> Vec<ProjectStub> {
 pub struct Project {
     pub name: Option<String>,
     pub audio: ProjectAudio,
+    pub spectrogram: ProjectSpectrogram,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -42,6 +43,15 @@ pub struct ProjectAudio {
     pub file: String,
     pub channels: usize,
     pub rate: usize,
+}
+
+
+#[derive(Deserialize, Serialize)]
+pub struct ProjectSpectrogram {
+    pub samples_per_fft: usize,
+    pub samples_per_step: usize,
+    pub width: usize,
+    pub height: usize,
 }
 
 pub fn get(name: &Path) -> Option<Project> {
