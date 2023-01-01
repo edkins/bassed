@@ -1,5 +1,7 @@
-use serde::Serialize;
-use std::fs;
+use serde::{Deserialize, Serialize};
+use std::fs::{self,File};
+use std::io::BufReader;
+use std::path::{Path, PathBuf};
 
 #[derive(Eq, Ord, PartialEq, PartialOrd, Serialize)]
 pub struct ProjectStub {
@@ -27,4 +29,21 @@ pub fn list() -> Vec<ProjectStub> {
     }
     result.sort();
     result
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct Project {
+    pub name: Option<String>,
+    pub audio: Option<String>,
+}
+
+pub fn get(name: &Path) -> Option<Project> {
+    let mut path:PathBuf = PathBuf::from("projects");
+    path.push(name);
+    path.set_extension("json");
+    let file = File::open(path).ok()?;
+    let reader = BufReader::new(file);
+    let mut project:Project = serde_json::from_reader(reader).ok()?;
+    project.name = Some(name.to_str()?.to_owned());
+    Some(project)
 }
