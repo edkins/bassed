@@ -2,8 +2,61 @@
 <html>
 <head>
 <meta charset="utf-8">
+<style>
+body {
+	margin: 0px;
+	background: #111;
+}
+
+.wrapper {
+	display: grid;
+	grid-template-columns: 200px 1fr;
+}
+
+.left {
+	background: #448;
+	color: #fff;
+	padding-bottom: 32px;
+}
+
+.project_stub {
+	background: #66c;
+	color: #fff;
+}
+
+.main {
+	background: #111;
+	color: #fff;
+	min-height: 500px;
+}
+
+</style>
+<script>
+"use strict";
+
+async function load() {
+	const response = await fetch('api/projects');
+	const json = await response.json();
+	const left = document.getElementById('left');
+	left.innerHTML = '';
+	for (const project of json.projects) {
+		const div = document.createElement('div');
+		div.classList = ['project_stub'];
+		div.textContent = project.name;
+		left.appendChild(div);
+	}
+}
+
+window.onload = load;
+</script>
 </head>
 <body>
-This is a page.
+	<div class="wrapper">
+		<div class="left" id="left">
+			Stuff
+		</div>
+		<div class="main">
+		</div>
+	</div>
 </body>
 </html>
