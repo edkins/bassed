@@ -34,7 +34,14 @@ pub fn list() -> Vec<ProjectStub> {
 #[derive(Deserialize, Serialize)]
 pub struct Project {
     pub name: Option<String>,
-    pub audio: Option<String>,
+    pub audio: ProjectAudio,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct ProjectAudio {
+    pub file: String,
+    pub channels: usize,
+    pub rate: usize,
 }
 
 pub fn get(name: &Path) -> Option<Project> {

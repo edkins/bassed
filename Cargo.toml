@@ -6,7 +6,10 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+byteorder = "1.4.3"
+ndarray = "0.15.6"
+realfft = "3.2.0"
 rocket = {version = "0.5.0-rc.2", features = ["json"]}
+rustfft = "6.1.0"
 serde = {version = "1.0.152", features = ["derive"]}
 serde_json = "1.0.91"
-symphonia = {version = "0.5.1", features = ["aac","alac"]}
