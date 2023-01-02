@@ -46,9 +46,9 @@ pub fn get_spectrogram(info: &ProjectAudio, spec: &ProjectSpectrogram) -> Option
 
             let values_g = output_sq.mapv(|e|(e.powf(0.25) * 32.) as u8);
 
-            result.slice_mut(s![i, j, .., 0]).fill(0);
+            result.slice_mut(s![i, j, .., 0]).assign(&values_g);
             result.slice_mut(s![i, j, .., 1]).assign(&values_g);
-            result.slice_mut(s![i, j, .., 2]).fill(0);
+            result.slice_mut(s![i, j, .., 2]).assign(&values_g);
             result.slice_mut(s![i, j, .., 3]).assign(&values_g);
 
             prev_sq.assign(&output_sq);

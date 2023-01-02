@@ -105,7 +105,7 @@ async function start_cursor(e) {
 			if (mic === undefined) {
 				mic = await navigator.mediaDevices.getUserMedia({audio:true});
 				const mic_source = audio_ctx.createMediaStreamSource(mic);
-				analyser = new AnalyserNode(audio_ctx, {fftSize:4096});
+				analyser = new AnalyserNode(audio_ctx, {fftSize:8192});
 				mic_source.connect(analyser);
 			}
 
