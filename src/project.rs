@@ -43,6 +43,7 @@ pub struct ProjectAudio {
     pub file: String,
     pub channels: usize,
     pub rate: usize,
+    pub length: Option<usize>,
 }
 
 
@@ -62,5 +63,8 @@ pub fn get(name: &Path) -> Option<Project> {
     let reader = BufReader::new(file);
     let mut project:Project = serde_json::from_reader(reader).ok()?;
     project.name = Some(name.to_str()?.to_owned());
+    if let Ok(metadata) = fs::metadata(&format!("projects/{}", project.audio.file)) {
+        project.audio.length = Some(metadata.len() as usize / project.audio.channels / 4);
+    }
     Some(project)
 }

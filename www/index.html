@@ -58,6 +58,8 @@ body {
 let timer = undefined;
 let start_time = undefined;
 let cursor_rate = undefined;
+let audio_ctx = undefined;
+let audio_buffer = undefined;
 let audio_source = undefined;
 function tick() {
 	const cursor_y = (new Date().getTime() - start_time) / 1000 * cursor_rate;
@@ -67,32 +69,34 @@ function tick() {
 function start_cursor(e) {
 	if (e.key === 'p') {
 		if (timer === undefined) {
+			audio_source = audio_ctx.createBufferSource();
+			audio_source.buffer = audio_buffer;
+			audio_source.connect(audio_ctx.destination);
+
 			start_time = new Date().getTime();
 			timer = setInterval(tick, 10);
-			audio_source.start();
+			audio_source.start(0, 0);
 		} else {
 			clearInterval(timer);
 			timer = undefined;
 			audio_source.stop();
+			audio_source = undefined;
 		}
 	}
 }
 
 function set_up_audio(project, pcm_buffer) {
-	const ctx = new AudioContext();
-	const length = 441000;
+	audio_ctx = new AudioContext();
+	const length = project.audio.length;
 	const view = new DataView(pcm_buffer);
 	const num_channels = project.audio.channels;
-	const buffer = ctx.createBuffer(num_channels, length, project.audio.rate);
+	audio_buffer = audio_ctx.createBuffer(num_channels, length, project.audio.rate);
 	for (let ch = 0; ch < num_channels; ch++) {
-		const channel_data = buffer.getChannelData(ch);
+		const channel_data = audio_buffer.getChannelData(ch);
 		for (let i = 0; i < length; i++) {
 			channel_data[i] = view.getFloat32((num_channels * i + ch) * 4, true);
 		}
 	}
-	audio_source = ctx.createBufferSource();
-	audio_source.buffer = buffer;
-	audio_source.connect(ctx.destination);
 }
 
 async function click_stub(e) {
