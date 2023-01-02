@@ -1,19 +1,16 @@
 use ndarray::{s, Array, ArrayView, ArrayViewMut};
 use realfft::RealFftPlanner;
 use std::fs::File;
-use std::io::{Seek, SeekFrom};
 use byteorder::{LittleEndian, ReadBytesExt};
 use crate::project::{ProjectAudio, ProjectSpectrogram};
 
-pub fn get_spectrogram(info: &ProjectAudio, spec: &ProjectSpectrogram, index: usize) -> Option<Vec<u8>> {
+pub fn get_spectrogram(info: &ProjectAudio, spec: &ProjectSpectrogram) -> Option<Vec<u8>> {
     let filename = format!("projects/{}", info.file);
-    let num_steps = spec.height;
+    let num_steps = spec.height.unwrap();
     let num_freqs = spec.width;
-    let num_samples = num_steps * spec.samples_per_step + (spec.samples_per_fft - spec.samples_per_step);
-    let start_pos = info.channels * 4 * num_steps * spec.samples_per_step * index;
+    let num_samples = info.length.unwrap();
     let len = info.channels * 4 * num_samples;
     let mut file = File::open(filename).ok()?;
-    file.seek(SeekFrom::Start(start_pos as u64)).ok()?;
     let mut f32_vec:Vec<f32> = vec![0.0; len / 4];
     file.read_f32_into::<LittleEndian>(&mut f32_vec).ok()?;
     let array = Array::from_vec(f32_vec).into_shape((num_samples, info.channels)).ok()?;
@@ -24,7 +21,7 @@ pub fn get_spectrogram(info: &ProjectAudio, spec: &ProjectSpectrogram, index: us
     assert_eq!(fft_input.len(), spec.samples_per_fft);
     assert!(fft_output.len() >= num_freqs);
 
-    let mut result:Array<u8,_> = Array::zeros((info.channels, spec.height, spec.width, 4));
+    let mut result:Array<u8,_> = Array::zeros((info.channels, spec.height.unwrap(), spec.width, 4));
 
     for i in 0..info.channels {
         for j in 0..num_steps {
@@ -46,5 +43,5 @@ pub fn get_spectrogram(info: &ProjectAudio, spec: &ProjectSpectrogram, index: us
             result.slice_mut(s![i, j, .., 3]).fill(255);
         }
     }
-    Some(result.into_shape((info.channels * spec.height * spec.width * 4,)).expect("into_shape failure").to_vec())
+    Some(result.into_shape((info.channels * spec.height.unwrap() * spec.width * 4,)).expect("into_shape failure").to_vec())
 }
