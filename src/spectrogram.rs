@@ -24,10 +24,11 @@ pub fn get_spectrogram(info: &ProjectAudio, spec: &ProjectSpectrogram) -> Option
 
     let mut gaussian:Array<f32,_> = Array::zeros((spec.samples_per_fft,));
     for i in 0..spec.samples_per_fft {
-        let x = ((i as f32) / (spec.samples_per_fft as f32) - 0.5) * 6.0;
+        let x = ((i as f32) / (spec.samples_per_fft as f32) - 0.5) * 4.0;
         gaussian[i] = (-x * x).exp();
     }
 
+    let mut prev_sq = Array::zeros((num_freqs,));
     for i in 0..wanted_channels {
         for j in 0..num_steps {
             let offset = j * spec.samples_per_step;
@@ -42,14 +43,15 @@ pub fn get_spectrogram(info: &ProjectAudio, spec: &ProjectSpectrogram) -> Option
             let output_re = output_cx.re.into_owned();
             let output_im = output_cx.im.into_owned();
             let output_sq = output_re.clone() * output_re.clone() + output_im.clone() * output_im.clone();
-            let values_r = output_sq.mapv(|e|(e.powf(0.25) * 32.) as u8);
-            let values_g = output_sq.mapv(|e|(e.powf(0.25) * 16.) as u8);
-            let values_b = output_sq.mapv(|e|(e.powf(0.25) * 8.) as u8);
 
-            result.slice_mut(s![i, j, .., 0]).assign(&values_r);
+            let values_g = output_sq.mapv(|e|(e.powf(0.25) * 32.) as u8);
+
+            result.slice_mut(s![i, j, .., 0]).fill(0);
             result.slice_mut(s![i, j, .., 1]).assign(&values_g);
-            result.slice_mut(s![i, j, .., 2]).assign(&values_b);
-            result.slice_mut(s![i, j, .., 3]).fill(255);
+            result.slice_mut(s![i, j, .., 2]).fill(0);
+            result.slice_mut(s![i, j, .., 3]).assign(&values_g);
+
+            prev_sq.assign(&output_sq);
         }
     }
     Some(result.into_shape((wanted_channels * spec.height.unwrap() * spec.width * 4,)).expect("into_shape failure").to_vec())

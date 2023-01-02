@@ -34,7 +34,7 @@ body {
 }
 
 .main {
-	background: #f00;
+	background: #111;
 	color: #fff;
 	min-height: 500px;
 	display: grid;
@@ -70,6 +70,9 @@ let position_time = 0;
 let y_offset = undefined;
 let cursor_rate = undefined;
 
+let mic = undefined;
+let analyser = undefined;
+
 let mouse_x = undefined;
 let lowpass = undefined;
 let highpass = undefined;
@@ -82,13 +85,29 @@ function tick() {
 	const cursor_y = (position_time + new Date().getTime() - start_time) / 1000 * cursor_rate + y_offset;
 	const cursor = document.getElementById('cursor');
 	cursor.style.top = `${cursor_y}px`;
+
+	const analysis = new Uint8Array(1024);
+	const colors = new Uint8ClampedArray(1024 * 4);
+	analyser.getByteFrequencyData(analysis);
+	for (let i = 0; i < 1024; i++) {
+		colors[4*i] = analysis[i];
+		colors[4*i+3] = analysis[i];
+	}
+	const image_data = new ImageData(colors, 1024, 1);
+	document.getElementById('canvas2').getContext('2d').putImageData(image_data, 0, cursor_y);
 }
 
-function start_cursor(e) {
+async function start_cursor(e) {
 	if (e.key === 'p' || e.key === 'r') {
 		if (timer === undefined) {
 			audio_source = audio_ctx.createBufferSource();
 			audio_source.buffer = audio_buffer;
+			if (mic === undefined) {
+				mic = await navigator.mediaDevices.getUserMedia({audio:true});
+				const mic_source = audio_ctx.createMediaStreamSource(mic);
+				analyser = new AnalyserNode(audio_ctx, {fftSize:4096});
+				mic_source.connect(analyser);
+			}
 
 			let node = audio_source;
 			if (highpass !== undefined) {
@@ -193,7 +212,9 @@ async function click_stub(e) {
 	canvas.height = h;
 	const ctx = canvas.getContext('2d');
 	ctx.putImageData(image_data, 0, 0);
-	main.appendChild(canvas);
+	const canvas2 = document.getElementById('canvas2');
+	canvas2.width = w;
+	canvas2.height = h;
 	e.target.classList.add('selected');
 }
 
@@ -229,7 +250,15 @@ window.onload = load;
 			<div style="position:absolute; width:0; height: 0">
 				<div class="vcursor" id="highpass"></div>
 			</div>
-			<canvas id="canvas" onmousedown="mousedown(event)" onmousemove="mousemove(event)"></canvas>
+
+			<div style="position:relative">
+				<div style="position:absolute; left:0; top: 0">
+					<canvas id="canvas2"></canvas>
+				</div>
+				<div style="position:absolute; left:0; top: 0">
+					<canvas id="canvas" onmousedown="mousedown(event)"></canvas>
+				</div>
+			</div>
 		</div>
 	</div>
 </body>
