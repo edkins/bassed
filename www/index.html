@@ -46,8 +46,17 @@ body {
 
 .cursor {
 	background: #f0f;
+	left: 0px;
 	width: 2000px;
 	height: 1px;
+	position: relative;
+}
+
+.vcursor {
+	background: #f0f;
+	top: 0px;
+	width: 1px;
+	height: 1000px;
 	position: relative;
 }
 
@@ -60,6 +69,11 @@ let start_time = undefined;
 let position_time = 0;
 let y_offset = undefined;
 let cursor_rate = undefined;
+
+let mouse_x = undefined;
+let lowpass = undefined;
+let highpass = undefined;
+let hz_per_pixel = undefined;
 
 let audio_ctx = undefined;
 let audio_buffer = undefined;
@@ -75,7 +89,25 @@ function start_cursor(e) {
 		if (timer === undefined) {
 			audio_source = audio_ctx.createBufferSource();
 			audio_source.buffer = audio_buffer;
-			audio_source.connect(audio_ctx.destination);
+
+			let node = audio_source;
+			if (highpass !== undefined) {
+				const filter = audio_ctx.createBiquadFilter();
+				filter.type = 'lowshelf';
+				filter.frequency.value = highpass;
+				filter.gain.value = -20;
+				node.connect(filter);
+				node = filter;
+			}
+			if (lowpass !== undefined) {
+				const filter = audio_ctx.createBiquadFilter();
+				filter.type = 'highshelf';
+				filter.frequency.value = lowpass;
+				filter.gain.value = -20;
+				node.connect(filter);
+				node = filter;
+			}
+			node.connect(audio_ctx.destination);
 
 			if (e.key === 'r') {
 				position_time = 0;
@@ -90,6 +122,16 @@ function start_cursor(e) {
 			audio_source.stop();
 			audio_source = undefined;
 		}
+	} else if (e.key === 'h') {
+		const vcursor = document.getElementById('lowpass');
+		vcursor.style.left = `${mouse_x}px`;
+		vcursor.style.height = `${document.getElementById('canvas').height}px`;
+		lowpass = mouse_x * hz_per_pixel;
+	} else if (e.key === 'l') {
+		const vcursor = document.getElementById('highpass');
+		vcursor.style.left = `${mouse_x}px`;
+		vcursor.style.height = `${document.getElementById('canvas').height}px`;
+		highpass = mouse_x * hz_per_pixel;
 	}
 }
 
@@ -99,6 +141,10 @@ function mousedown(e) {
 		const cursor = document.getElementById('cursor');
 		cursor.style.top = `${e.offsetY}px`;
 	}
+}
+
+function mousemove(e) {
+	mouse_x = e.offsetX;
 }
 
 function set_up_audio(project, pcm_buffer) {
@@ -124,6 +170,7 @@ async function click_stub(e) {
 	const project = await response0.json();
 	cursor_rate = project.audio.rate / project.spectrogram.samples_per_step;  // = steps per second 
 	y_offset = -(project.spectrogram.samples_per_fft - project.spectrogram.samples_per_step) / 2 / project.spectrogram.samples_per_step;
+	hz_per_pixel = project.audio.rate / project.spectrogram.samples_per_fft;
 	const main = document.getElementById('main');
 	const response1 = await fetch(`api/projects/${name}/pcm`);
 	if (response1.status !== 200) {
@@ -169,14 +216,20 @@ window.onload = load;
 </script>
 </head>
 <body onkeydown="start_cursor(event)">
-	<div>
-		<div class="cursor" id="cursor"></div>
-	</div>
 	<div class="wrapper">
 		<div class="left" id="left">
 		</div>
 		<div class="main" id="main">
-			<canvas id="canvas" onmousedown="mousedown(event)"></canvas>
+			<div style="position:absolute; width:0; height: 0">
+				<div class="cursor" id="cursor"></div>
+			</div>
+			<div style="position:absolute; width:0; height: 0">
+				<div class="vcursor" id="lowpass"></div>
+			</div>
+			<div style="position:absolute; width:0; height: 0">
+				<div class="vcursor" id="highpass"></div>
+			</div>
+			<canvas id="canvas" onmousedown="mousedown(event)" onmousemove="mousemove(event)"></canvas>
 		</div>
 	</div>
 </body>
