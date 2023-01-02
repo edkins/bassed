@@ -44,9 +44,37 @@ body {
 .main canvas {
 }
 
+.cursor {
+	background: #f0f;
+	width: 600px;
+	height: 1px;
+	position: relative;
+}
+
 </style>
 <script>
 "use strict";
+
+let timer = undefined;
+let start_time = undefined;
+let cursor_rate = undefined;
+function tick() {
+	console.log('tick');
+	const cursor_y = (new Date().getTime() - start_time) / 1000 * cursor_rate;
+	cursor.style.top = `${cursor_y}px`;
+}
+
+function start_cursor(e) {
+	if (e.key === 'p') {
+		if (timer === undefined) {
+			start_time = new Date().getTime();
+			timer = setInterval(tick, 10);
+		} else {
+			clearInterval(timer);
+			timer = undefined;
+		}
+	}
+}
 
 async function click_stub(e) {
 	const name = e.target.dataset.name;
@@ -55,6 +83,7 @@ async function click_stub(e) {
 		return;
 	}
 	const project = await response.json();
+	cursor_rate = project.audio.rate / project.spectrogram.samples_per_step;  // = steps per second 
 	const main = document.getElementById('main');
 	main.innerHTML = '';
 	for (let i = 0; i < 100; i++) {
@@ -95,7 +124,10 @@ async function load() {
 window.onload = load;
 </script>
 </head>
-<body>
+<body onkeydown="start_cursor(event)">
+	<div>
+		<div class="cursor" id="cursor" style="width:600px; height:1px"></div>
+	</div>
 	<div class="wrapper">
 		<div class="left" id="left">
 		</div>

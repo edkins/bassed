@@ -8,7 +8,7 @@ use crate::project::{ProjectAudio, ProjectSpectrogram};
 pub fn get_spectrogram(info: &ProjectAudio, spec: &ProjectSpectrogram, index: usize) -> Option<Vec<u8>> {
     let filename = format!("projects/{}", info.file);
     let num_steps = spec.height;
-    let num_expected_frequency_bins = spec.width;
+    let num_freqs = spec.width;
     let num_samples = num_steps * spec.samples_per_step + (spec.samples_per_fft - spec.samples_per_step);
     let start_pos = info.channels * 4 * num_steps * spec.samples_per_step * index;
     let len = info.channels * 4 * num_samples;
@@ -22,7 +22,7 @@ pub fn get_spectrogram(info: &ProjectAudio, spec: &ProjectSpectrogram, index: us
     let mut fft_input = fft.make_input_vec();
     let mut fft_output = fft.make_output_vec();
     assert_eq!(fft_input.len(), spec.samples_per_fft);
-    assert_eq!(fft_output.len(), num_expected_frequency_bins);
+    assert!(fft_output.len() >= num_freqs);
 
     let mut result:Array<u8,_> = Array::zeros((info.channels, spec.height, spec.width, 4));
 
@@ -32,7 +32,8 @@ pub fn get_spectrogram(info: &ProjectAudio, spec: &ProjectSpectrogram, index: us
             let mut input_view = ArrayViewMut::from_shape((spec.samples_per_fft,), &mut fft_input).expect("ArrayViewMut failure");
             input_view.assign(&array.slice(s![offset..offset+spec.samples_per_fft, i]));
             fft.process(&mut fft_input, &mut fft_output).expect("FFT failed for some reason");
-            let output_view = ArrayView::from_shape((num_expected_frequency_bins,), &fft_output).expect("ArrayView failure");
+            let output_view = ArrayView::from_shape((fft_output.len(),), &fft_output).expect("ArrayView failure");
+            let output_view = output_view.slice(s![..num_freqs]);
 
             let output_cx = output_view.split_complex();
             let output_re = output_cx.re.into_owned();
