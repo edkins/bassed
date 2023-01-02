@@ -58,8 +58,8 @@ body {
 let timer = undefined;
 let start_time = undefined;
 let cursor_rate = undefined;
+let audio_source = undefined;
 function tick() {
-	console.log('tick');
 	const cursor_y = (new Date().getTime() - start_time) / 1000 * cursor_rate;
 	cursor.style.top = `${cursor_y}px`;
 }
@@ -69,11 +69,30 @@ function start_cursor(e) {
 		if (timer === undefined) {
 			start_time = new Date().getTime();
 			timer = setInterval(tick, 10);
+			audio_source.start();
 		} else {
 			clearInterval(timer);
 			timer = undefined;
+			audio_source.stop();
 		}
 	}
+}
+
+function set_up_audio(project, pcm_buffer) {
+	const ctx = new AudioContext();
+	const length = 441000;
+	const view = new DataView(pcm_buffer);
+	const num_channels = project.audio.channels;
+	const buffer = ctx.createBuffer(num_channels, length, project.audio.rate);
+	for (let ch = 0; ch < num_channels; ch++) {
+		const channel_data = buffer.getChannelData(ch);
+		for (let i = 0; i < length; i++) {
+			channel_data[i] = view.getFloat32((num_channels * i + ch) * 4, true);
+		}
+	}
+	audio_source = ctx.createBufferSource();
+	audio_source.buffer = buffer;
+	audio_source.connect(ctx.destination);
 }
 
 async function click_stub(e) {
@@ -86,6 +105,9 @@ async function click_stub(e) {
 	cursor_rate = project.audio.rate / project.spectrogram.samples_per_step;  // = steps per second 
 	const main = document.getElementById('main');
 	main.innerHTML = '';
+	const response1 = await fetch(`api/projects/${name}/pcm`);
+	const pcm_buffer = await response1.arrayBuffer();
+	set_up_audio(project, pcm_buffer);
 	for (let i = 0; i < 100; i++) {
 		const response2 = await fetch(`api/projects/${name}/spectrogram/${i}`);
 		if (response2.status !== 200) {
@@ -127,6 +149,8 @@ window.onload = load;
 <body onkeydown="start_cursor(event)">
 	<div>
 		<div class="cursor" id="cursor" style="width:600px; height:1px"></div>
+		<audio id="audio">
+		</audio>
 	</div>
 	<div class="wrapper">
 		<div class="left" id="left">
