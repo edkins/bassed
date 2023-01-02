@@ -46,7 +46,7 @@ body {
 
 .cursor {
 	background: #f0f;
-	width: 600px;
+	width: 2000px;
 	height: 1px;
 	position: relative;
 }
@@ -57,27 +57,34 @@ body {
 
 let timer = undefined;
 let start_time = undefined;
+let position_time = 0;
+let y_offset = undefined;
 let cursor_rate = undefined;
+
 let audio_ctx = undefined;
 let audio_buffer = undefined;
 let audio_source = undefined;
 function tick() {
-	const cursor_y = (new Date().getTime() - start_time) / 1000 * cursor_rate;
+	const cursor_y = (position_time + new Date().getTime() - start_time) / 1000 * cursor_rate + y_offset;
 	cursor.style.top = `${cursor_y}px`;
 }
 
 function start_cursor(e) {
-	if (e.key === 'p') {
+	if (e.key === 'p' || e.key === 'r') {
 		if (timer === undefined) {
 			audio_source = audio_ctx.createBufferSource();
 			audio_source.buffer = audio_buffer;
 			audio_source.connect(audio_ctx.destination);
 
+			if (e.key === 'r') {
+				position_time = 0;
+			}
 			start_time = new Date().getTime();
 			timer = setInterval(tick, 10);
-			audio_source.start(0, 0);
+			audio_source.start(0, position_time / 1000);
 		} else {
 			clearInterval(timer);
+			position_time += new Date().getTime() - start_time;
 			timer = undefined;
 			audio_source.stop();
 			audio_source = undefined;
@@ -107,6 +114,7 @@ async function click_stub(e) {
 	}
 	const project = await response0.json();
 	cursor_rate = project.audio.rate / project.spectrogram.samples_per_step;  // = steps per second 
+	y_offset = -(project.spectrogram.samples_per_fft - project.spectrogram.samples_per_step) / 2 / project.spectrogram.samples_per_step;
 	const main = document.getElementById('main');
 	main.innerHTML = '';
 	const response1 = await fetch(`api/projects/${name}/pcm`);
@@ -154,7 +162,7 @@ window.onload = load;
 </head>
 <body onkeydown="start_cursor(event)">
 	<div>
-		<div class="cursor" id="cursor" style="width:600px; height:1px"></div>
+		<div class="cursor" id="cursor"></div>
 		<audio id="audio">
 		</audio>
 	</div>

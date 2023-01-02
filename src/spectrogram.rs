@@ -23,7 +23,13 @@ pub fn get_spectrogram(info: &ProjectAudio, spec: &ProjectSpectrogram) -> Option
 
     let mut result:Array<u8,_> = Array::zeros((info.channels, spec.height.unwrap(), spec.width, 4));
 
+    let bands = (spec.samples_per_step as f32) / (spec.samples_per_fft as f32) * 6.283185307179586;
+    let cos = Array::from_iter((0..num_freqs).map(|t|(t as f32 * bands).cos()));
+    let sin = Array::from_iter((0..num_freqs).map(|t|(t as f32 * bands).sin()));
+
     for i in 0..info.channels {
+        let mut prev_out_re:Array<f32,_> = Array::zeros((num_freqs,));
+        let mut prev_out_im:Array<f32,_> = Array::zeros((num_freqs,));
         for j in 0..num_steps {
             let offset = j * spec.samples_per_step;
             let mut input_view = ArrayViewMut::from_shape((spec.samples_per_fft,), &mut fft_input).expect("ArrayViewMut failure");
@@ -35,12 +41,21 @@ pub fn get_spectrogram(info: &ProjectAudio, spec: &ProjectSpectrogram) -> Option
             let output_cx = output_view.split_complex();
             let output_re = output_cx.re.into_owned();
             let output_im = output_cx.im.into_owned();
-            let values = (output_re.clone() * output_re + output_im.clone() * output_im).mapv(|e|e as u8);
+            let values_r = (output_re.clone() * output_re.clone() + output_im.clone() * output_im.clone()).mapv(|e|(e.powf(0.33) * 16.) as u8);
+            let values_g = values_r.clone();
 
-            result.slice_mut(s![i, j, .., 0]).assign(&values);
-            result.slice_mut(s![i, j, .., 1]).assign(&values);
-            result.slice_mut(s![i, j, .., 2]).assign(&values);
+            let diff_re = prev_out_re.clone() * cos.clone() - prev_out_im.clone() * sin.clone() - output_re.clone();
+            let diff_im = prev_out_re.clone() * sin.clone() + prev_out_im.clone() * cos.clone() - output_im.clone();
+
+            let values_b = (diff_re.clone() * diff_re.clone() + diff_im.clone() * diff_im.clone()).mapv(|e|(e.powf(0.33) * 32.) as u8);
+
+            result.slice_mut(s![i, j, .., 0]).assign(&values_r);
+            result.slice_mut(s![i, j, .., 1]).assign(&values_g);
+            result.slice_mut(s![i, j, .., 2]).assign(&values_b);
             result.slice_mut(s![i, j, .., 3]).fill(255);
+
+            prev_out_re.assign(&output_re);
+            prev_out_im.assign(&output_im);
         }
     }
     Some(result.into_shape((info.channels * spec.height.unwrap() * spec.width * 4,)).expect("into_shape failure").to_vec())
