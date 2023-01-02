@@ -66,6 +66,7 @@ let audio_buffer = undefined;
 let audio_source = undefined;
 function tick() {
 	const cursor_y = (position_time + new Date().getTime() - start_time) / 1000 * cursor_rate + y_offset;
+	const cursor = document.getElementById('cursor');
 	cursor.style.top = `${cursor_y}px`;
 }
 
@@ -89,6 +90,14 @@ function start_cursor(e) {
 			audio_source.stop();
 			audio_source = undefined;
 		}
+	}
+}
+
+function mousedown(e) {
+	if (timer === undefined) {
+		position_time = (e.offsetY - y_offset) / cursor_rate * 1000;
+		const cursor = document.getElementById('cursor');
+		cursor.style.top = `${e.offsetY}px`;
 	}
 }
 
@@ -116,7 +125,6 @@ async function click_stub(e) {
 	cursor_rate = project.audio.rate / project.spectrogram.samples_per_step;  // = steps per second 
 	y_offset = -(project.spectrogram.samples_per_fft - project.spectrogram.samples_per_step) / 2 / project.spectrogram.samples_per_step;
 	const main = document.getElementById('main');
-	main.innerHTML = '';
 	const response1 = await fetch(`api/projects/${name}/pcm`);
 	if (response1.status !== 200) {
 		return;
@@ -133,7 +141,7 @@ async function click_stub(e) {
 	const h = project.spectrogram.height;
 	const u8_array = new Uint8ClampedArray(array_buffer, 0, 4 * w * h);
 	const image_data = new ImageData(u8_array, w, h);
-	const canvas = document.createElement('canvas');
+	const canvas = document.getElementById('canvas');
 	canvas.width = w;
 	canvas.height = h;
 	const ctx = canvas.getContext('2d');
@@ -163,13 +171,12 @@ window.onload = load;
 <body onkeydown="start_cursor(event)">
 	<div>
 		<div class="cursor" id="cursor"></div>
-		<audio id="audio">
-		</audio>
 	</div>
 	<div class="wrapper">
 		<div class="left" id="left">
 		</div>
 		<div class="main" id="main">
+			<canvas id="canvas" onmousedown="mousedown(event)"></canvas>
 		</div>
 	</div>
 </body>
