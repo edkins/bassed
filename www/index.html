@@ -68,6 +68,7 @@ let timer = undefined;
 let start_time = undefined;
 let position_time = 0;
 let x_offset = undefined;
+let x_scroll = 0;
 let cursor_rate = undefined;
 
 let mic = undefined;
@@ -81,10 +82,15 @@ let hz_per_pixel = undefined;
 let audio_ctx = undefined;
 let audio_buffer = undefined;
 let audio_source = undefined;
+
+let offscreen_canvas = undefined;
+let offscreen_canvas2 = undefined;
+
 function tick() {
 	const cursor_x = (position_time + new Date().getTime() - start_time) / 1000 * cursor_rate + x_offset;
 	const cursor = document.getElementById('cursor');
-	cursor.style.left = `${cursor_x}px`;
+	x_scroll = cursor_x - 500;
+	cursor.style.left = `${cursor_x - x_scroll}px`;
 
 	const analysis = new Uint8Array(1024);
 	const colors = new Uint8ClampedArray(1024 * 4);
@@ -94,7 +100,17 @@ function tick() {
 		colors[4*i+3] = analysis[511-i];
 	}
 	const image_data = new ImageData(colors, 1, 1024);
-	document.getElementById('canvas2').getContext('2d').putImageData(image_data, cursor_x, 0);
+	offscreen_canvas2.getContext('2d').putImageData(image_data, cursor_x, 0);
+
+	redraw();
+}
+
+function redraw() {
+	const ctx = document.getElementById('canvas').getContext('2d');
+	ctx.fillStyle = '#000';
+	ctx.fillRect(0, 0, 1000, 800);
+	ctx.drawImage(offscreen_canvas2, x_scroll, 0, 1000, 800, 0, 0, 1000, 800);
+	ctx.drawImage(offscreen_canvas, x_scroll, 0, 1000, 800, 0, 0, 1000, 800);
 }
 
 async function start_cursor(e) {
@@ -156,9 +172,12 @@ async function start_cursor(e) {
 
 function mousedown(e) {
 	if (timer === undefined) {
-		position_time = (e.offsetX - x_offset) / cursor_rate * 1000;
+		position_time = (e.offsetX - x_offset + x_scroll) / cursor_rate * 1000;
+		const cursor_x = position_time / 1000 * cursor_rate + x_offset;
+		x_scroll = cursor_x - 500;
 		const cursor = document.getElementById('cursor');
-		cursor.style.left = `${e.offsetY}px`;
+		//cursor.style.left = `${e.offsetX}px`;
+		redraw();
 	}
 }
 
@@ -207,14 +226,14 @@ async function click_stub(e) {
 	const h = project.spectrogram.height;
 	const u8_array = new Uint8ClampedArray(array_buffer, 0, 4 * w * h);
 	const image_data = new ImageData(u8_array, w, h);
-	const canvas = document.getElementById('canvas');
-	canvas.width = w;
-	canvas.height = h;
-	const ctx = canvas.getContext('2d');
+	offscreen_canvas = document.createElement('canvas');
+	offscreen_canvas.width = w;
+	offscreen_canvas.height = h;
+	const ctx = offscreen_canvas.getContext('2d');
 	ctx.putImageData(image_data, 0, 0);
-	const canvas2 = document.getElementById('canvas2');
-	canvas2.width = w;
-	canvas2.height = h;
+	offscreen_canvas2 = document.createElement('canvas');
+	offscreen_canvas2.width = w;
+	offscreen_canvas2.height = h;
 	e.target.classList.add('selected');
 }
 
@@ -241,6 +260,11 @@ window.onload = load;
 		<div class="left" id="left">
 		</div>
 		<div class="main" id="main">
+			<div style="position:relative">
+				<div style="position:absolute; left:0; top: 0">
+					<canvas id="canvas" onmousedown="mousedown(event)" width="1000" height="800"></canvas>
+				</div>
+			</div>
 			<div style="position:absolute; width:0; height: 0">
 				<div class="cursor" id="cursor"></div>
 			</div>
@@ -251,14 +275,6 @@ window.onload = load;
 				<div class="vcursor" id="highpass"></div>
 			</div>
 
-			<div style="position:relative">
-				<div style="position:absolute; left:0; top: 0">
-					<canvas id="canvas2"></canvas>
-				</div>
-				<div style="position:absolute; left:0; top: 0">
-					<canvas id="canvas" onmousedown="mousedown(event)"></canvas>
-				</div>
-			</div>
 		</div>
 	</div>
 </body>
