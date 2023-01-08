@@ -36,6 +36,7 @@ pub struct Project {
     pub name: Option<String>,
     pub audio: ProjectAudio,
     pub spectrogram: ProjectSpectrogram,
+    pub images: ProjectImages,
 }
 
 #[derive(Deserialize, Serialize)]
@@ -44,6 +45,8 @@ pub struct ProjectAudio {
     pub channels: usize,
     pub rate: usize,
     pub length: Option<usize>,
+    pub bar_length: f32,
+    pub bar_offset: f32,
 }
 
 
@@ -53,6 +56,19 @@ pub struct ProjectSpectrogram {
     pub samples_per_step: usize,
     pub width: Option<usize>,
     pub height: usize,
+    pub full_height: usize,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct ProjectImages {
+    pub bass: Vec<ProjectImage>,
+}
+
+#[derive(Deserialize, Serialize)]
+pub struct ProjectImage {
+    pub file: String,
+    pub start: f32,
+    pub end: f32,
 }
 
 pub fn get(name: &Path) -> Option<Project> {

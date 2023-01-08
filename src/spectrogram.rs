@@ -1,10 +1,12 @@
-use ndarray::{s, Array, ArrayView};
+use ndarray::{s, Array, ArrayView, Dim};
 use realfft::RealFftPlanner;
 use std::fs::File;
 use byteorder::{LittleEndian, ReadBytesExt};
-use crate::project::{ProjectAudio, ProjectSpectrogram};
+use crate::project::{ProjectAudio, ProjectSpectrogram, ProjectImage};
+use image::io::Reader;
+use image::imageops::FilterType;
 
-pub fn get_spectrogram(info: &ProjectAudio, spec: &ProjectSpectrogram) -> Option<Vec<u8>> {
+pub fn get_spectrogram_with_images(info: &ProjectAudio, spec: &ProjectSpectrogram, images: &[ProjectImage]) -> Option<Vec<u8>> {
     let filename = format!("projects/{}", info.file);
     let num_steps = spec.width.unwrap();
     let num_freqs = spec.height;
@@ -20,7 +22,7 @@ pub fn get_spectrogram(info: &ProjectAudio, spec: &ProjectSpectrogram) -> Option
     assert!(fft_output.len() >= num_freqs);
 
     let wanted_channels = 1;
-    let mut result:Array<u8,_> = Array::zeros((wanted_channels, spec.height, spec.width.unwrap(), 4));
+    let mut result:Array<u8,_> = Array::zeros((wanted_channels, spec.full_height, spec.width.unwrap(), 4));
 
     let mut gaussian:Array<f32,_> = Array::zeros((spec.samples_per_fft,));
     for i in 0..spec.samples_per_fft {
@@ -48,13 +50,34 @@ pub fn get_spectrogram(info: &ProjectAudio, spec: &ProjectSpectrogram) -> Option
             values.reverse();
             let values = Array::from_vec(values);
 
-            result.slice_mut(s![i, .., j, 0]).assign(&values);
-            result.slice_mut(s![i, .., j, 1]).assign(&values);
-            result.slice_mut(s![i, .., j, 2]).assign(&values);
-            result.slice_mut(s![i, .., j, 3]).assign(&values);
+            result.slice_mut(s![i, 0..num_freqs, j, 0]).assign(&values);
+            result.slice_mut(s![i, 0..num_freqs, j, 1]).assign(&values);
+            result.slice_mut(s![i, 0..num_freqs, j, 2]).assign(&values);
+            result.slice_mut(s![i, 0..num_freqs, j, 3]).assign(&values);
 
             prev_sq.assign(&output_sq);
         }
     }
-    Some(result.into_shape((wanted_channels * spec.height * spec.width.unwrap() * 4,)).expect("into_shape failure").to_vec())
+
+    for image in images {
+        let x0 = (((image.start - 1.0) * info.bar_length + info.bar_offset) * (info.rate as f32) / (spec.samples_per_step as f32)) as usize;
+        let x1 = ((image.end * info.bar_length + info.bar_offset) * (info.rate as f32) / (spec.samples_per_step as f32)) as usize;
+        let data = get_image(&image.file, x1 - x0)?;
+        let height = data.shape()[0];
+        let width = data.shape()[1];
+        result.slice_mut(s![0, spec.height..spec.height + height, x0..x0 + width, ..]).assign(&data);
+    }
+
+    Some(result.into_shape((wanted_channels * spec.full_height * spec.width.unwrap() * 4,)).expect("into_shape failure").to_vec())
+}
+
+fn get_image(name: &str, desired_width: usize) -> Option<Array<u8,Dim<[usize;3]>>> {
+    let image = Reader::open(format!("projects/{name}")).ok()?.decode().ok()?;
+    let width = image.width();
+    let height = image.height();
+    let image = image.resize(desired_width as u32, ((desired_width as u64) * (height as u64) / (width as u64)) as u32, FilterType::Triangle);
+    let width = image.width();
+    let height = image.height();
+    let data:Vec<u8> = image.into_rgba8().into_vec();
+    Array::from_vec(data).into_shape((height as usize, width as usize, 4usize)).ok()
 }

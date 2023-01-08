@@ -28,7 +28,7 @@ fn get_project(name: PathBuf) -> Result<Json<Project>, NotFound<String>> {
 #[get("/projects/<name>/spectrogram")]
 fn get_spectrogram(name: PathBuf) -> Result<Vec<u8>, NotFound<String>> {
     if let Some(project) = project::get(&name) {
-        let data = spectrogram::get_spectrogram(&project.audio, &project.spectrogram).ok_or_else(||NotFound("Unable to load audio data".to_owned()))?;
+        let data = spectrogram::get_spectrogram_with_images(&project.audio, &project.spectrogram, &project.images.bass).ok_or_else(||NotFound("Unable to load audio data".to_owned()))?;
         Ok(data)
     } else {
         Err(NotFound("Could not locate a valid project at this path".to_owned()))

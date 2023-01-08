@@ -173,6 +173,7 @@ async function start_cursor(e) {
 function mousedown(e) {
 	if (timer === undefined) {
 		position_time = (e.offsetX - x_offset + x_scroll) / cursor_rate * 1000;
+		console.log(position_time);
 		const cursor_x = position_time / 1000 * cursor_rate + x_offset;
 		x_scroll = cursor_x - 500;
 		const cursor = document.getElementById('cursor');
@@ -223,7 +224,7 @@ async function click_stub(e) {
 	}
 	const array_buffer = await response2.arrayBuffer();
 	const w = project.spectrogram.width;
-	const h = project.spectrogram.height;
+	const h = project.spectrogram.full_height;
 	const u8_array = new Uint8ClampedArray(array_buffer, 0, 4 * w * h);
 	const image_data = new ImageData(u8_array, w, h);
 	offscreen_canvas = document.createElement('canvas');
