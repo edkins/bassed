@@ -51,8 +51,8 @@ pub struct ProjectAudio {
 pub struct ProjectSpectrogram {
     pub samples_per_fft: usize,
     pub samples_per_step: usize,
-    pub width: usize,
-    pub height: Option<usize>,
+    pub width: Option<usize>,
+    pub height: usize,
 }
 
 pub fn get(name: &Path) -> Option<Project> {
@@ -65,7 +65,7 @@ pub fn get(name: &Path) -> Option<Project> {
     project.name = Some(name.to_str()?.to_owned());
     if let Ok(metadata) = fs::metadata(&format!("projects/{}", project.audio.file)) {
         project.audio.length = Some(metadata.len() as usize / project.audio.channels / 4);
-        project.spectrogram.height = Some((project.audio.length.unwrap() - (project.spectrogram.samples_per_fft - project.spectrogram.samples_per_step)) / project.spectrogram.samples_per_step);
+        project.spectrogram.width = Some((project.audio.length.unwrap() - (project.spectrogram.samples_per_fft - project.spectrogram.samples_per_step)) / project.spectrogram.samples_per_step);
     }
     Some(project)
 }

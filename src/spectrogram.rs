@@ -6,8 +6,8 @@ use crate::project::{ProjectAudio, ProjectSpectrogram};
 
 pub fn get_spectrogram(info: &ProjectAudio, spec: &ProjectSpectrogram) -> Option<Vec<u8>> {
     let filename = format!("projects/{}", info.file);
-    let num_steps = spec.height.unwrap();
-    let num_freqs = spec.width;
+    let num_steps = spec.width.unwrap();
+    let num_freqs = spec.height;
     let num_samples = info.length.unwrap();
     let len = info.channels * 4 * num_samples;
     let mut file = File::open(filename).ok()?;
@@ -20,7 +20,7 @@ pub fn get_spectrogram(info: &ProjectAudio, spec: &ProjectSpectrogram) -> Option
     assert!(fft_output.len() >= num_freqs);
 
     let wanted_channels = 1;
-    let mut result:Array<u8,_> = Array::zeros((wanted_channels, spec.height.unwrap(), spec.width, 4));
+    let mut result:Array<u8,_> = Array::zeros((wanted_channels, spec.height, spec.width.unwrap(), 4));
 
     let mut gaussian:Array<f32,_> = Array::zeros((spec.samples_per_fft,));
     for i in 0..spec.samples_per_fft {
@@ -44,15 +44,17 @@ pub fn get_spectrogram(info: &ProjectAudio, spec: &ProjectSpectrogram) -> Option
             let output_im = output_cx.im.into_owned();
             let output_sq = output_re.clone() * output_re.clone() + output_im.clone() * output_im.clone();
 
-            let values_g = output_sq.mapv(|e|(e.powf(0.25) * 32.) as u8);
+            let mut values = output_sq.mapv(|e|(e.powf(0.25) * 32.) as u8).to_vec();
+            values.reverse();
+            let values = Array::from_vec(values);
 
-            result.slice_mut(s![i, j, .., 0]).assign(&values_g);
-            result.slice_mut(s![i, j, .., 1]).assign(&values_g);
-            result.slice_mut(s![i, j, .., 2]).assign(&values_g);
-            result.slice_mut(s![i, j, .., 3]).assign(&values_g);
+            result.slice_mut(s![i, .., j, 0]).assign(&values);
+            result.slice_mut(s![i, .., j, 1]).assign(&values);
+            result.slice_mut(s![i, .., j, 2]).assign(&values);
+            result.slice_mut(s![i, .., j, 3]).assign(&values);
 
             prev_sq.assign(&output_sq);
         }
     }
-    Some(result.into_shape((wanted_channels * spec.height.unwrap() * spec.width * 4,)).expect("into_shape failure").to_vec())
+    Some(result.into_shape((wanted_channels * spec.height * spec.width.unwrap() * 4,)).expect("into_shape failure").to_vec())
 }
